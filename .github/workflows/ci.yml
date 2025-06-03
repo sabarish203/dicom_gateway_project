@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: DICOM Gateway CI Pipeline
 
 on:
   push:
@@ -9,33 +9,60 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # Prevents hanging jobs
-    
+    timeout-minutes: 15
+    services:
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - "5672:5672"
+          - "15672:15672"
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+
     steps:
-    - uses: actions/checkout@v4  # Updated from v3
-    
+    - uses: actions/checkout@v4
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        cache: 'pip'  # Enable dependency caching
-        
-    - name: Install dependencies
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libssl-dev
+
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r services/dicom-gw/requirements.txt
-        
+        pip install pika  # Required for RabbitMQ tests
+
     - name: Lint with flake8
       run: |
         pip install flake8
         flake8 services/dicom-gw --count --show-source --statistics
-        
-    - name: Test with pytest
+
+    - name: Run unit tests
       run: |
         pip install pytest pytest-cov
-        pytest tests --cov=services/dicom-gw --cov-report=xml
-        
+        pytest tests/unit --cov=services/dicom-gw --cov-report=xml
+
+    - name: Verify RabbitMQ connection
+      run: |
+        python -c "
+        import pika
+        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        channel = connection.channel()
+        channel.queue_declare(queue='new_study')
+        connection.close()
+        print('RabbitMQ connection successful!')
+        "
+
     - name: Upload coverage
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
+        fail_ci_if_error: true

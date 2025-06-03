@@ -1,4 +1,6 @@
-﻿services:
+﻿version: '3.8'
+
+services:
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -11,14 +13,49 @@
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 30s
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   dicom-gw:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "11112:11112"
     environment:
       - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
     depends_on:
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11112/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  orthanc:
+    image: jodogne/orthanc-plugins
+    ports:
+      - "8042:8042"
+    volumes:
+      - orthanc_db:/var/lib/orthanc/db
+
+  ct-sim:
+    build:
+      context: ./ct-sim
+      dockerfile: Dockerfile
+    environment:
+      - ORTHANC_URL=http://orthanc:8042
+    depends_on:
+      orthanc:
+        condition: service_healthy
+
+volumes:
+  rabbitmq_data:
+  orthanc_db:

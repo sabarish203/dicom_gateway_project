@@ -8,3 +8,8 @@
 1. **Start services**:
    ```bash
    docker compose up --build -d
+   ## 🧪 Quick Start (CT Simulator)
+1. Run with Docker Compose:
+
+```bash
+docker compose up --build -d
