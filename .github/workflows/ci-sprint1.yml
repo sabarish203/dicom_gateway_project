@@ -16,7 +16,7 @@ jobs:
 
       - name: Start services
         run: |
-          docker compose up -d gateway rabbitmq ct-sim orthanc
+          run: docker compose up -d dicom-gw rabbitmq ct-sim orthanc
           docker compose logs -f ct-sim | grep -m 1 "Study sent"
 
       - name: Verify RabbitMQ queue
