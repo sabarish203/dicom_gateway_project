@@ -1,0 +1,79 @@
+version: '3.8'
+
+networks:
+  imaging-net:
+    driver: bridge
+
+volumes:
+  rabbitmq-data:
+  orthanc-data:
+
+services:
+  dicom-gw:
+    build:
+      context: ./services/dicom-gw
+    ports:
+      - "8000:8000"
+      - "104:104"
+    volumes:
+      - ./services/dicom-gw:/app
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_QUEUE: new_study
+    networks:
+      - imaging-net
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5673:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-securepass}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - imaging-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  orthanc:
+    image: jodogne/orthanc
+    ports:
+      - "8042:8042"
+      - "4242:4242"
+    volumes:
+      - orthanc-data:/var/lib/orthanc
+      - ./orthanc.json:/etc/orthanc/orthanc.json
+    environment:
+      - ORTHANC_CONFIGURATION=/etc/orthanc/orthanc.json
+    networks:
+      - imaging-net
+    restart: unless-stopped
+
+  ct-sim:
+    build: ./tools/ct-sim
+    ports:
+      - "105:105"
+    volumes:
+      - ./tools/ct-sim:/sim
+      - ./datasets:/sim/datasets:ro
+    networks:
+      - imaging-net
+    restart: on-failure

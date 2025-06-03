@@ -1,0 +1,26 @@
+
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install dependencies
+      run: |
+        pip install -r services/dicom-gw/requirements.txt
+    - name: Lint
+      run: |
+        pip install flake8
+        flake8 services/dicom-gw
+    - name: Test
+      run: |
+        pytest tests --cov=services/dicom-gw

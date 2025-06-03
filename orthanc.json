@@ -1,0 +1,6 @@
+﻿{
+  "AuthenticationEnabled": false,
+  "Name": "Orthanc-DICOM",
+  "StorageDirectory": "/var/lib/orthanc",
+  "Plugins": []
+}

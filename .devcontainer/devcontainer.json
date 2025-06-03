@@ -1,0 +1,14 @@
+{
+  "name": "dicom-dev",
+  "context": "..",
+  "dockerFile": "Dockerfile",
+  "runArgs": ["--network=imaging-net"],
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "extensions": [
+    "ms-python.python",
+    "ms-azuretools.vscode-docker"
+  ],
+  "postCreateCommand": "pip install -r services/dicom-gw/requirements.txt"
+}
